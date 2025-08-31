@@ -1,15 +1,11 @@
-# Define the output file path.
-$outputFile = "VRChat_Current_World.txt"
-
-# Clear the content of the output file when the script starts.
-Write-Host "Clearing output file: $outputFile"
-Set-Content -Path $outputFile -Value ""
-
 # This is a perpetual loop that runs every 60 seconds.
 while ($true) {
 
     # Define the VRChat log directory path using the correct "LocalLow" directory.
     $logDirectory = "$env:USERPROFILE\AppData\LocalLow\VRChat\VRChat"
+
+    # Define the output file path.
+    $outputFile = "VRChat_Current_World.txt"
 
     # Get the most recent log file.
     $latestLogFile = Get-ChildItem -Path $logDirectory -Filter "output_log_*.txt" | Sort-Object LastWriteTime -Descending | Select-Object -First 1
@@ -28,23 +24,29 @@ while ($true) {
         $roomEntry = $logContent | Select-String -Pattern "\[Behaviour\] Joining or Creating Room: " | Select-Object -Last 1
 
         if ($null -ne $destinationEntry -and $null -ne $roomEntry) {
-            # Extract the instance type and group ID if applicable.
+            # Extract the instance type.
             $destinationInfo = $destinationEntry.ToString()
-            $instanceType = ""
+            $instanceType = "Public"
             $groupId = ""
 
-            # Check for various instance types.
-            if ($destinationInfo -match '~(private|friends\+|friends|invite\+|invite|group|group\+|groupAccessType\(public\))') {
-                $match = $destinationInfo | Select-String -Pattern '(private|friends\+|friends|invite\+|invite|group\+|groupAccessType\(public\))'
+            # Updated regex to capture all known instance types.
+            if ($destinationInfo -match '~(private|friends\+|friends|invite\+|invite|group\+|groupAccessType\(public\)|groupAccessType\(plus\)|groupAccessType\(members\))') {
+                $match = $destinationInfo | Select-String -Pattern '(private|friends\+|friends|invite\+|invite|group\+|groupAccessType\(public\)|groupAccessType\(plus\)|groupAccessType\(members\))'
                 $instanceType = $match.Matches[0].Value
+                
+                # Assign user-friendly names to instance types.
                 if ($instanceType -eq 'groupAccessType(public)') {
                     $instanceType = "Group Public"
+                } elseif ($instanceType -eq 'groupAccessType(plus)') {
+                    $instanceType = "Group Plus"
+                } elseif ($instanceType -eq 'groupAccessType(members)') {
+                    $instanceType = "Group Members"
                 } elseif ($instanceType -match '\((.*)\)') {
                     $instanceType = $matches[1]
                 }
             }
 
-            # Extract the Group ID if it exists in the destination info.
+            # Extract the Group ID if it exists.
             if ($destinationInfo -match 'group\((grp_[a-zA-Z0-9-]+)\)') {
                 $groupId = $matches[1]
             }
@@ -73,11 +75,10 @@ while ($true) {
             }
         } else {
             # If no world entries are found, it's likely a fresh log file.
-            Write-Output "No new world name or instance entry found in the latest log file. Waiting for new entries..."
+            Write-Output "No world name or instance entry found in the latest log file. Waiting for new entries..."
         }
     }
 
-    # Pause the script for 60 seconds before the next loop iteration.
-    Start-Sleep -Seconds 60
-
+    # Pause the script for 15 seconds before the next loop iteration.
+    Start-Sleep -Seconds 15
 }
