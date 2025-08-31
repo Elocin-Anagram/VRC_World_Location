@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>OBS Text Source</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            color: white; /* Customize text color */
+            font-family: Arial, sans-serif;
+            font-size: 24px;
+            /* Add any other styling you need */
+        }
+    </style>
+</head>
+<body>
+
+    <div id="dynamicText">Loading...</div>
+
+    <script>
+        // Replace 'mytextfile.txt' with the actual name of your file.
+        const filePath = 'VRChat_Current_World.txt';
+        let lastContent = '';
+
+        function updateText() {
+            fetch(filePath)
+                .then(response => response.text())
+                .then(data => {
+                    if (data !== lastContent) {
+                        document.getElementById('dynamicText').innerText = data;
+                        lastContent = data;
+                    }
+                })
+                .catch(error => console.error('Error fetching the file:', error));
+        }
+
+        // Check for updates every 1 second (1000 milliseconds)
+        setInterval(updateText, 1000);
+
+        // Initial call to display the text immediately
+        updateText();
+    </script>
+
+</body>
+</html>
