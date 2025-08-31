@@ -73,10 +73,11 @@ while ($true) {
             }
         } else {
             # If no world entries are found, it's likely a fresh log file.
-            Write-Output "No world name or instance entry found in the latest log file. Waiting for new entries..."
+            Write-Output "No new world name or instance entry found in the latest log file. Waiting for new entries..."
         }
     }
 
     # Pause the script for 60 seconds before the next loop iteration.
     Start-Sleep -Seconds 60
+
 }
