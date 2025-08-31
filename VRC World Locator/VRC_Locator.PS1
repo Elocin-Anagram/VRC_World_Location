@@ -1,4 +1,41 @@
-# This is a perpetual loop that runs every 60 seconds.
+# VRChat World Logger with Enhanced Execution Policy Check
+# This script continuously monitors the VRChat log file to extract the current world name and instance type.
+# It first checks if the execution policy is set to 'RemoteSigned' to prevent errors.
+
+# --- Execution Policy Check ---
+# Check if the current session is running as Administrator.
+$isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+$currentPolicy = Get-ExecutionPolicy -Scope LocalMachine
+Write-Host "Current Execution Policy for LocalMachine is: $currentPolicy"
+
+# If the policy is not 'RemoteSigned', handle the situation based on admin privileges.
+if ($currentPolicy -ne 'RemoteSigned') {
+    if ($isAdmin) {
+        # If the user is an admin, prompt to set the policy automatically.
+        $choice = Read-Host "Execution policy 'RemoteSigned' is required. Would you like to set it now? (Y/N)"
+        if ($choice -eq 'y' -or $choice -eq 'Y') {
+            Write-Host "Setting Execution Policy to 'RemoteSigned'..." -ForegroundColor Cyan
+            Set-ExecutionPolicy RemoteSigned -Scope LocalMachine -Force | Out-Null
+            Write-Host "Execution Policy set successfully." -ForegroundColor Green
+        } else {
+            Write-Host "Execution Policy was not changed. The script cannot proceed." -ForegroundColor Yellow
+            Read-Host "Press Enter to exit..."
+            exit
+        }
+    } else {
+        # If the user is not an admin, provide instructions and exit with a pause.
+        Write-Host "Execution policy 'RemoteSigned' is required to run this script." -ForegroundColor Yellow
+        Write-Host "Please open PowerShell as an Administrator and run this script again to set the policy." -ForegroundColor Yellow
+        Read-Host "Press Enter to exit..."
+        # Exit the script to prevent it from running with an incorrect policy.
+        exit
+    }
+}
+
+Write-Host "Execution Policy check passed. Starting the VRChat World Logger..." -ForegroundColor Green
+
+# --- VRChat Log Monitoring Loop ---
+# This is a perpetual loop that runs every 15 seconds.
 while ($true) {
 
     # Define the VRChat log directory path using the correct "LocalLow" directory.
@@ -12,7 +49,7 @@ while ($true) {
 
     # Check if a log file was found.
     if ($null -eq $latestLogFile) {
-        Write-Output "No VRChat log files found at '$logDirectory'. Waiting 60 seconds before checking again..."
+        Write-Output "No VRChat log files found at '$logDirectory'. Waiting 15 seconds before checking again..."
     } else {
         # Read the last 10000 lines of the log file for efficiency.
         $logContent = Get-Content -Path $latestLogFile.FullName -Tail 10000
