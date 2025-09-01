@@ -54,48 +54,66 @@ while ($true) {
         # Read the last 10000 lines of the log file for efficiency.
         $logContent = Get-Content -Path $latestLogFile.FullName -Tail 10000
 
-        # Find the latest "Destination fetching" entry for the instance type.
-        $destinationEntry = $logContent | Select-String -Pattern "\[Behaviour\] Destination fetching: " | Select-Object -Last 1
-        
         # Find the latest "Joining or Creating Room" entry for the world name.
         $roomEntry = $logContent | Select-String -Pattern "\[Behaviour\] Joining or Creating Room: " | Select-Object -Last 1
+        
+        # Find the latest "Destination fetching" entry for the instance type and ID.
+        $destinationEntry = $logContent | Select-String -Pattern "\[Behaviour\] Destination fetching: " | Select-Object -Last 1
 
         if ($null -ne $destinationEntry -and $null -ne $roomEntry) {
-            # Extract the instance type.
-            $destinationInfo = $destinationEntry.ToString()
-            $instanceType = "Public"
-            $groupId = ""
-
-            # Updated regex to capture all known instance types.
-            if ($destinationInfo -match '~(private|friends\+|friends|invite\+|invite|group\+|groupAccessType\(public\)|groupAccessType\(plus\)|groupAccessType\(members\))') {
-                $match = $destinationInfo | Select-String -Pattern '(private|friends\+|friends|invite\+|invite|group\+|groupAccessType\(public\)|groupAccessType\(plus\)|groupAccessType\(members\))'
-                $instanceType = $match.Matches[0].Value
-                
-                # Assign user-friendly names to instance types.
-                if ($instanceType -eq 'groupAccessType(public)') {
-                    $instanceType = "Group Public"
-                } elseif ($instanceType -eq 'groupAccessType(plus)') {
-                    $instanceType = "Group Plus"
-                } elseif ($instanceType -eq 'groupAccessType(members)') {
-                    $instanceType = "Group Members"
-                } elseif ($instanceType -match '\((.*)\)') {
-                    $instanceType = $matches[1]
-                }
-            }
-
-            # Extract the Group ID if it exists.
-            if ($destinationInfo -match 'group\((grp_[a-zA-Z0-9-]+)\)') {
-                $groupId = $matches[1]
-            }
-            
-            # Use a regular expression to capture the full world name accurately.
+            # Extract the world name using a regular expression.
             $worldName = "Unknown World"
             if ($roomEntry.ToString() -match '\[Behaviour\] Joining or Creating Room: (.*)') {
                 $worldName = $matches[1].Trim()
             }
 
-            # Create a clean output string, including the Group ID if found.
-            $outputString = "$worldName`n($instanceType"
+            # Extract the full destination URL from the log entry.
+            $destinationInfo = $destinationEntry.ToString()
+            $instanceType = "Public"
+            $groupId = ""
+            $ageGate = ""
+
+            # Check for a group instance and extract the ID and type.
+            if ($destinationInfo -match 'group\((grp_[a-zA-Z0-9-]+)\)') {
+                $groupId = $matches[1]
+                # Check for the specific group access type.
+                if ($destinationInfo -match 'groupAccessType\(public\)') {
+                    $instanceType = "Group Public"
+                } elseif ($destinationInfo -match 'groupAccessType\(plus\)') {
+                    $instanceType = "Group Plus"
+                } elseif ($destinationInfo -match 'groupAccessType\(members\)') {
+                    $instanceType = "Group Members"
+                } else {
+                    $instanceType = "Group" # Default to 'Group' if type is not specified.
+                }
+            }
+            # Check for other common instance types, including the "hidden" Friends+ type.
+            elseif ($destinationInfo -match 'friends\+') {
+                $instanceType = "Friends+"
+            }
+            elseif ($destinationInfo -match '~hidden') {
+                $instanceType = "Friends+"
+            }
+            elseif ($destinationInfo -match 'friends') {
+                $instanceType = "Friends"
+            }
+            elseif ($destinationInfo -match 'invite\+') {
+                $instanceType = "Invite+"
+            }
+            elseif ($destinationInfo -match '~canRequestInvite') {
+                $instanceType = "Invite+"
+            }
+            elseif ($destinationInfo -match 'private') {
+                $instanceType = "Invite"
+            }
+            
+            # Check for an age-gated instance.
+            if ($destinationInfo -match '~ageGate') {
+                $ageGate = " 18+"
+            }
+
+            # Create a clean output string.
+            $outputString = "$worldName`n($instanceType$ageGate"
             if ($groupId) {
                 $outputString += ", $groupId)"
             } else {
